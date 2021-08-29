@@ -1,0 +1,465 @@
+QUESTION
+
+
+Write a function called phazed_is_valid_play that takes the following arguments:
+
+play
+A 2-tuple indicating the play type, and the content of the play, as follows:
+1
+Pick up a card from the top of the deck at the start of the player's turn, with the play content being the card that was picked up (e.g. (1, 'JS')).
+2
+Pick up a card from the top of the discard pile at the start of the player's turn, with the play content being the card that was picked up (e.g. (2, '2C')).
+3
+Place a phase to the table from the player's hand, with the play content being a 2-tuple containing the intended phase ID (as an integer, based on the IDs from Q2) and actual phase (as a list of groups) (e.g. (3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]))).
+4
+Place a single card from the player's hand to a phase on the table, with the play content being a 2-tuple made up of the card the player is attempting to play, and the position they are attempting to play it in, itself in the form of a 3-tuple indicating: (1) the player ID of the phase the card is to be placed on; (2) the group within the phase the card is to placed in; and (3) the index of the position within the group the card is to be played to. For example, (4, ('AD', (1, 0, 3))) indicates that an Ace of Diamonds is to be placed on the phase of Player 1, in Group 0 and index position 3 (i.e. it will be the fourth card in the first Group).
+5
+Discard a single card from the player's hand, and in doing so, end the turn (e.g. (5, 'JS') indicates that a Jack of Spades is to be discarded).
+player_id
+An integer between 0 and 3 inclusive, indicating the ID of the player attempting the play.
+table
+A 4-element list of phase plays for each of Players 0—3, respectively. Each phase play is in the form of a 2-tuple indicating the phase content (as an integer or None, consistent with the output of phazed_phase_type) and a list of lists of cards (of the same format as for phazed_phase_type, but possibly with extra cards played to each of the groups in the phase). An empty phase for a given player will take the form (None, []). As an example of a full 4-player table, [(None, []), (1, [['2S', '2S', '2C'], ['AS', '5S', '5S', '5D']]), (None, []), (None, [])] indicates that Players 0, 2 and 3 are yet to play a phase for the hand, and Player 1 has played Phase 1, in the form of a set of Twos and a set of Fives, the latter of which has had one extra card added to it.
+turn_history
+A list of all turns in the hand to date, in sequence of play. Each turn takes the form of a 2-tuple made up of the Player ID and the list of individual plays in the turn (based on the same format as for play above, with the one difference that for any draws from the deck, the card is indicated as 'XX' (as it is not visible to other players). For example, [(0, [(2, 'JS'), (5, 'JS')]), (1, [(2, 'JS'), (3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]))])] indicates that the hand to date is made up of two turns, on the part of Players 0 and 1, respectively. Player 0 first drew the Jack of Spades from the discard pile, then discarded the Jack of Spades (presumably they had a change of heart!). Player 1 then picked up the Jack of Spades from the discard pile, and played a phase, in the form of two sets of three cards of the same value (i.e. Phase 1).
+phase_status
+A 4-element list indicating the phases that each of Players 0—3, respectively, have achieved in the game. For example, [0, 4, 0, 0] indicates that Players 0, 2 and 3 have not got any phases, but Player 1 has achieved up to Phase 4. At the start of a game, this is initialised to [0, 0, 0, 0].
+hand
+The list of cards that the current player holds in their hand, each of which is in the form of a 2-element string.
+discard
+The top card of the discard stack, in the form of a 2-element string (e.g. '3D') or None in the case the discard pile is empty (e.g. if the first player picks up from the discard pile and hasn't finished their turn).
+Your function should return True if play is valid relative to the current hand state, and False otherwise. For a play to be "valid", the following conditions must be met:
+
+if the play is a pick-up play from the deck or discard pile, it must be the first play of the turn (and the card the player is attempting to pick up from the discard pile must match the actual card on the discard pile, e.g.)
+a phase play must match the declared phase type, must be the phase type that the player is required to play for the current hand, must occur after picking up a single card from the deck or discard pile, the player cannot have played a phase already in the current hand, and must hold all cards in the attempted phase play
+a play to the table must happen after picking up a card from the deck or discard pile, can only happen if the player has played their phase in the current hand, must be of a card they hold in their hand, and must be consistent (in terms of value, suit, and position) with the group type the player is attempting to play to (e.g. building on either end of a run; see below for comments on plays to accumulations)
+an attempt to discard a card and end the turn must have been preceded by a pick-up play, must be of a card the player holds, and requires that any accumulations the player has played to in that turn are "complete" (see below)
+You may assume that the game state will be consistent at the start of the turn (i.e. all groups on the table will be correctly constituted, and any accumulations will be "complete", in the sense of totalling 34, 34 + 21 = 55, 34 + 21 + 13 = 68, etc. points). A single play to an accumulation must either result in a "complete" accumulation (a total value of 34, 55, 68, etc.), or a value less than the lowest value required to complete the accumulation relative to the value at the start of the play (e.g. if the original value is 43, only cards of value 1–12 can be added, such that the total is  
+≤
+  55; the reason for this is that any plays to an accumulation in a single turn must build it to the next value in the additive sequence, and as long as it is less than 55, it is possible that extra cards can be added to get to 55 in subsequent plays in the given turn). If the play to an accumulation is of the last card the player holds, the accumulation must be completed for the play to be valid, but if the player still holds cards, there is no need to check whether it is theoretically possible to complete the accumulation using the remaining cards (that check happens at the point of the final card play in the turn).
+
+Example calls to the function are:
+>>> phazed_is_valid_play((3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']])), 0, [(None, []), (None, []), (None, []), (None, [])], [(0, [(2, 'JS')])], [0, 0, 0, 0], ['AS', '2S', '2S', '2C', '5S', '5S', '7S', '8S', '9S', '0S', 'JS'], None)
+True
+>>> phazed_is_valid_play((4, ('KC', (1, 0, 0))), 1, [(None, []), (2, [['2S', '2S', 'AS', '5S', '5S', '7S', 'JS']]), (None, []), (None, [])], [(0, [(2, 'JS'), (5, 'JS')]), (1, [(1, 'XX'), (3, (2, [['2S', '2S', 'AS', '5S', '5S', '7S', 'JS']]))])], [0, 2, 0, 0], ['5D', '0S', 'JS', 'KC'], 'JS')
+False
+>>> phazed_is_valid_play((5, 'JS'), 1, [(None, []), (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]), (None, []), (None, [])], [(0, [(2, 'JS'), (5, 'JS')]), (1, [(1, 'XX'), (3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]))])], [0, 1, 0, 0], ['AD', '8S', '9S', '0S', 'JS'], 'JS')
+True
+
+CODE::::
+
+FOR utils.py
+
+Fibonacci = [1, 1, 2, 3, 5, 8, 13, 21, 34, 55, 68, 76, 81, 84, 86, 87, 88]
+
+def check_color(group):
+    ''' 
+    Check the color of the group given (Red or black)
+    '''
+    flag = []
+    for card in group:
+        if (card[:2] != '0A') and (card[-1] in ['H', 'D']):
+            flag.append(1)
+        elif (card[:2] != '0A') and (card[-1] in ['C', 'S']):
+            flag.append(0)
+    return flag
+
+def check_color_phase6(group):
+    ''' 
+    Check the color of the group given for phase 6(Red or black)
+    '''
+    flag = []
+    for card in group:
+        if (card[-1] in ['H', 'D']):
+            flag.append(1)
+        elif (card[-1] in ['C', 'S']):
+            flag.append(0)
+    return flag
+
+def run_of_cards(group):
+    '''
+    Checking for run of cards in the group
+    '''
+    flag = True
+    
+    # Checking if the A's appear in start of the run
+    if group[0][:2] == '0A':
+        if group[1][:2] == '0A':
+            if group[2][:2] == '0A':
+                if group[3][:2] == '0A':
+                    if group[4][:2] == '0A':
+                        if group[5][:2] == '0A':
+                            group = group[6:]
+                        else:
+                            group = group[5:]
+                    else:
+                        group = group[4:]
+                else:
+                    group = group[3:]
+            else:
+                group = group[2:]
+        else:
+            group = group[1:]
+                           
+
+    temp = group[0][:2]
+    if temp == '0A':
+        temp = int(group[1][:2]) - 1
+    for i in range(1, len(group)):
+        
+        upper = group[i][:2]
+        if ((upper == '0A') or
+            (int(temp) + 1) == int(upper) or
+            (int(temp) == 13 and int(upper) == 2)):
+
+            # Checking for the run after King card
+            if upper == '0A':
+                if group[i - 1][:2] == '13':
+                    temp = 2
+                else:
+                    temp = int(temp) + 1
+            else:
+                temp = upper
+        else:
+            flag = False
+            break
+    return flag
+
+
+def check_accumulation(accumulation, hand):
+    '''
+    Checking the accumulation in the fibonacci list from the hand
+    and returning true if value found in the list
+    '''
+    new_accu = accumulation
+    for card in hand:
+        new_accu += 1 if card[:2] == '0A' else int(card[:2])
+
+    if new_accu in Fibonacci:
+        return True
+    else:
+        return False
+
+
+def phazed_phaze_type(phaze):
+    ''' 
+    A function which takes two lists of cards and checks the correct
+    phase for it
+    '''
+    card_deck = {
+        '2': '02',
+        '3': '03',
+        '4': '04',
+        '5': '05',
+        '6': '06',
+        '7': '07',
+        '8': '08',
+        '9': '09',
+        '0': '10',
+        'J': '11',
+        'Q': '12',
+        'K': '13',
+        'A': '0A'
+    }
+
+    phaze_result = []
+
+    # Forming a valid card
+    for group in phaze:
+        for i in range(len(group)):
+            if group[i][0] in card_deck.keys():
+                group[i] = card_deck[group[i][0]] + group[i][1]
+
+        # Counting the number of wildcards
+        num_wild = 0
+        for card in group:
+            if card[:2] == '0A':
+                num_wild += 1
+
+        # Checking that there are atleast two natural cards
+        check_nc = len(group) - num_wild
+        if check_nc < 2:
+            return phaze_result
+
+    group1 = phaze[0]
+    group2 = phaze[1] if len(phaze) > 1 else []
+
+    val1_list, val2_list = [], []
+    suit1_list, suit2_list = [], []
+    accumulation1, accumulation2 = 0, 0
+
+    # Finding a value, suit and accumulation for group 1
+    for card in group1:
+        if card[:2] != '0A':
+            val1_list.append(card[:2])
+            suit1_list.append(card[-1])
+        accumulation1 += 1 if card[:2] == '0A' else int(card[:2])
+
+    # Finding a value, suit and accumulation for group 2
+    for card in group2:
+        if card[:2] != '0A':
+            val2_list.append(card[:2])
+            suit2_list.append(card[-1])
+        accumulation2 += 1 if card[:2] == '0A' else int(card[:2])
+
+
+    # Phaze 1
+    if (len(group1) == len(group2) == 3):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(1)
+
+    # Phaze 2    
+    if (len(group1) == 7):
+        if (int(len(set(suit1_list))) == 1):
+            phaze_result.append(2)
+
+    # Phaze 3,6
+    if (accumulation1 == accumulation2 == 34):
+        phaze_result.append(3)
+        flag1 = check_color_phase6(group1)
+        flag2 = check_color_phase6(group2)
+        if (int(len(set(flag1))) == 1) and (int(len(set(flag2))) == 1):
+            phaze_result.append(6)
+
+    # Phaze 4
+    if (len(group1) == len(group2) == 4):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(4)
+
+    # Phaze 5
+    if len(group1) == 8:
+        flag = run_of_cards(group1)
+        if flag:
+            phaze_result.append(5)
+
+    # Phaze 7
+    if (len(group1) == len(group2) == 4):
+        run = False
+        color = check_color(group1)
+        if len(set(color)) == 1:
+            run = run_of_cards(group1)
+
+        if (int(len(set(val2_list))) == 1) and run:
+            phaze_result.append(7)
+    return list(set(sorted(phaze_result)))
+
+
+
+def check_group_validity(card, card_pos, group, group_id, curr_phaze, hand):
+    '''
+    Checking the validity of all the parameters and returning
+    true if parameter checks out.
+    '''
+    
+    card_deck = {
+        '2': '02',
+        '3': '03',
+        '4': '04',
+        '5': '05',
+        '6': '06',
+        '7': '07',
+        '8': '08',
+        '9': '09',
+        '0': '10',
+        'J': '11',
+        'Q': '12',
+        'K': '13',
+        'A': '0A'
+    }
+
+    
+    # Forming a valid card
+    for i in range(len(hand)):
+        if hand[i][0] in card_deck.keys():
+            hand[i] = card_deck[hand[i][0]] + hand[i][1]
+    
+    card = card_deck[card[0]] + card[1]
+    for i in range(len(group)):
+        if group[i][0] in card_deck.keys():
+            group[i] = card_deck[group[i][0]] + group[i][1]
+
+    val_list = []
+    suit_list = []
+    accumulation = 0
+
+    # adding a card at given position and removing same card from hand
+    group.insert(card_pos, card)
+    hand.remove(card)
+
+    # Finding a value, suit and accumulation for group
+    for card in group:
+        if card[:2] != '0A':
+            val_list.append(card[:2])
+            suit_list.append(card[-1])
+        accumulation += 1 if card[:2] == '0A' else int(card[:2])
+
+    # Checking validity of phase 1
+    if (curr_phaze == 1):
+        if (int(len(set(val_list))) == 1):
+            return True
+
+    # Checking validity of phase 2
+    elif (curr_phaze == 2):
+        if (int(len(set(suit_list))) == 1):
+            return True
+
+    # Checking validity of phase 3
+    elif (curr_phaze == 3):
+        if check_accumulation(accumulation, hand):
+            return True
+
+    # Checking validity of phase 4
+    elif (curr_phaze == 4):
+        if (int(len(set(val_list))) == 1):
+            return True
+
+    # Checking validity of phase 5
+    elif (curr_phaze == 5):
+        flag = run_of_cards(group)
+        if flag:
+            return True
+
+    # Checking validity of phase 6
+    elif (curr_phaze == 6):
+        flag = check_color(group)
+        if ((int(len(set(flag))) == 1) and
+            check_accumulation(accumulation, hand)):
+            return True
+        
+
+    # Checking validity of phase 7
+    elif (curr_phaze == 7):
+        run = False
+        color = check_color(group)
+        if len(set(color)) == 1:
+            run = run_of_cards(group)
+
+        if (int(len(set(val_list))) == 1) and run:
+            return True
+
+    else:
+        return False
+
+
+FOR main.py
+
+
+from utils import check_group_validity, phazed_phaze_type
+
+def verify_cards(hand, cards):
+    '''
+    Checking if the cards are available in hand
+    '''
+    for card in cards:
+        if (card in hand) or (card == 'A'):
+            pass
+        else:
+            return False
+    return True
+
+
+def phazed_is_valid_play(play, player_id, table, turn_history, phase_status, 
+                         hand, discard):
+    '''
+    This function checks whether the play is valid or not by examining
+    various parameters.
+    '''
+    prev_play = None if len(turn_history) == 0 else turn_history[-1][-1][-1][0]
+
+    curr_play = play[0]
+    
+    # check for valid play
+    if ((curr_play in [1, 2] and prev_play is not None) or
+        (curr_play == 3 and prev_play not in [1, 2, 3]) or
+        (curr_play == 4 and prev_play not in [1, 2, 3, 4]) or
+        (curr_play == 5 and (prev_play is None or prev_play == 5))):        
+        return False
+
+    # Checking for play 1
+    if curr_play == 1:
+        if len([play[1]]) == 1:
+            return True
+
+    # Checking for play 2
+    if curr_play == 2:
+        if len([play[1]]) == 1 and (play[1] == discard):
+            return True
+
+
+    # Checking for play 3
+    if curr_play == 3:
+        play = play[1]
+        
+        # Validation of play and phase
+        if (len(play[1])) > 1:
+            # If there are two groups in phase
+            cards = play[1][0] + play[1][1]
+            valid_play = verify_cards(hand, cards)
+            check_phase = phazed_phaze_type(play[1])
+        else:
+            valid_play = verify_cards(hand, play[1][0])
+            check_phase = phazed_phaze_type(play[1])
+
+        if ((not valid_play) or
+            (len(check_phase) == 0) or
+            (check_phase[0] <= phase_status[player_id])):
+            return False
+        else:
+            return True
+
+
+    # Checking for play 4
+    if curr_play == 4:
+        valid_play = verify_cards(hand, [play[1][0]])
+        if ((table[player_id][0] is None) or
+            (not valid_play)):
+            return False
+
+        add_card = play[1][0]
+        player_mod = play[1][1][0]
+        curr_phaze = table[player_mod][0]
+        group_id = play[1][1][1]
+        group = table[player_mod][1][group_id]
+        position_id = play[1][1][2]
+
+        # Checking if position entered exceeds the length of the group
+        if position_id > (len(group)):
+            return False
+
+        group_validity = check_group_validity(
+            add_card, position_id, group, group_id, curr_phaze, hand
+        )
+        if group_validity:
+            return True
+        else:
+            return False
+
+    # Checking for play 5
+    if curr_play == 5:
+        curr_phaze = table[player_id][1]
+        flag = phazed_phaze_type(curr_phaze)
+        if flag and verify_cards(hand, [play[1]]):
+            return True
+        else:
+            return False
+    
+
+
+if __name__ == '__main__':
+    # Example calls to the function.
+    print(phazed_is_valid_play((3, (1, [['2S', '2S', '2C'],
+        ['AS', '5S', '5S']])), 0, [(None, []), (None, []),
+        (None, []), (None, [])], [(0, [(2, 'JS')])],
+        [0, 0, 0, 0], ['AS', '2S', '2S', '2C', '5S', '5S',
+                       '7S', '8S', '9S', '0S', 'JS'], None))
+    print(phazed_is_valid_play((4, ('KC', (1, 0, 0))),
+        1, [(None, []), (2, [['2S', '2S', 'AS', '5S',
+        '5S', '7S', 'JS']]), (None, []), (None, [])],
+        [(0, [(2, 'JS'), (5, 'JS')]), (1, [(1, 'XX'),
+        (3, [['2S', '2S', 'AS', '5S', '5S', '7S', 'JS']])])],
+        [0, 2, 0, 0], ['5D', '0S', 'JS', 'KC'], '0H'))
+    print(phazed_is_valid_play((5, 'JS'), 1, [(None, []),
+        (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]),
+        (None, []), (None, [])], [(0, [(2, 'JS'),
+        (5, 'JS')]), (1, [(1, 'XX'), (3, [['2S', '2S',
+        '2C'], ['AS', '5S', '5S']])])], [0, 1, 0, 0],
+        ['AD', '8S', '9S', '0S', 'JS'], '3C'))
