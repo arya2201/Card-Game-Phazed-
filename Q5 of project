@@ -1,0 +1,480 @@
+QUESTION
+
+Write a function called phazed_play that takes the following arguments:
+
+player_id
+An integer between 0 and 3 inclusive, indicating the ID of the player attempting the play.
+table
+A 4-element list of phase plays for each of Players 0—3, respectively. Each phase play is in the form of a 2-tuple indicating the phase type (as an integer or None, consistent with the output of phazed_phase_type) and a list of lists of cards (of the same format as for phazed_phase_type, but possibly with extra cards played to each of the groups in the phase). An empty phase for a given player will take the form (None, []). As an example of a full 4-player table, [(None, []), (1, [['2S', '2S', '2C'], ['AS', '5S', '5S', '5D']]), (None, []), (None, [])] indicates that Players 0, 2 and 3 are yet to play a phase for the hand, and Player 1 has played Phase 1, in the form of a set of Twos and a set of Fives, the latter of which has had one extra card added to it.
+turn_history
+A list of all turns in the hand to date, in sequence of play. Each turn takes the form of a 2-tuple made up of the Player ID and the list if individual plays in the turn (based on the same format as for play above, with the one difference that for any draws from the deck, the card is indicated as 'XX' (as it is not visible to other players). For example, [(0, [(2, 'JS'), (5, 'JS')]), (1, [(2, 'JS'), (3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]))])] indicates that the hand to date is made up of two turns, on the part of Players 0 and 1, respectively. Player 0 first drew the Jack of Spades from the discard pile, then discarded the Jack of Spades (presumably they had a change of heart!). Player 1 then picked up the Jack of Spades from the discard pile, and played a phase, in the form of two sets of three cards of the same value (i.e. Phase 1).
+phase_status
+A 4-element indicating the phases that each of Players 0—3, respectively, have achieved in the . For example, [0, 4, 0, 0] indicates that Players 0, 2 and 3 have not got any phases, but Player 1 has achieved up to Phase 4. At the start of a game, this is initialised to [0, 0, 0, 0].
+hand
+The list of cards that the current player holds in their hand, each of which is in the form of a 2-element string.
+discard
+The top card of the discard stack, in the form of a 2-element string (e.g. '3D').
+Your function should return a 2-tuple describing the single play your player wishes to make, made up of a play ID and associated play content, as described below:
+
+1
+Pick up a card from the top of the deck at the start of the player's turn. In this case, the card at the top of the deck is unknown at the time the play is determined, so the play content is set to None (i.e. (1, None)).
+2
+Pick up a card from the top of the discard pile at the start of the player's turn, with the play content taking the value of discard (e.g. (2, '2C')).
+3
+Place a phase to the table from the player's hand, with the play type being the 2-tuple of the phase ID (see Q2) and phase (e.g. (3, (1, [['2S', '2S', '2C'], ['AS', '5S', '5S']]))).
+4
+Place a single card from the player's hand to a phase on the table, with the play type being a 2-tuple made up of the card the player is attempting to play, and the position they are attempting to play it in, itself in the form of a 3-tuple indicating: (1) the player ID of the phase the card is to be placed on; (2) the group within the phase the card is to placed in; and (3) the index of the position within the group the card is to be played to. For example, (4, ('AD', (1, 0, 3))) indicates that an Ace of Diamonds is to be placed on the phase of Player 1, in Group 0 and index position 3 (i.e. it will be the fourth card in the first Group).
+5
+Discard a single card from the player's hand, and in doing so, end the turn (e.g. (5, 'JS') indicates that a Jack of Spades is to be discarded).
+An example call to the function is:
+
+>>> print(phazed_play(1, [(None, []), (5, [['2C', '3H', '4D', 'AD', '6S', '7C', '8S', '9H', '0S', 'JS']]), (None, []), (None, [])], [(0, [(2, 'JS'), (5, 'JS')]), (1, [(2, 'JS'), (3, (5, [['2C', '3H', '4D', 'AD', '6S', '7C', '8S', '9H']])), (4, ('0S', (1, 0, 8))), (4, ('JS', (1, 0, 9)))])], [0, 5, 0, 0], ['5D'], None))
+(5, '5D')
+
+
+CODE:::
+
+FOR phase_type.py
+
+def check_color(group):
+    ''' 
+    Check the color of the group given (Red or black)
+    '''
+    flag = []
+    for card in group:
+        if (card[:2] != '0A') and (card[-1] in ['H', 'D']):
+            flag.append(1)
+        elif (card[:2] != '0A') and (card[-1] in ['C', 'S']):
+            flag.append(0)
+    return flag
+
+def check_color_phase6(group):
+    ''' 
+    Check the color of the group given for phase 6 (Red or black)
+    '''
+    flag = []
+    for card in group:
+        if (card[-1] in ['H', 'D']):
+            flag.append(1)
+        elif (card[-1] in ['C', 'S']):
+            flag.append(0)
+    return flag
+
+def run_of_cards(group):
+    '''
+    Checking for run of cards in the group
+    '''
+    
+    # Checking if the A's appear in start of the run
+    flag = True
+    if group[0][:2] == '0A':
+        if group[1][:2] == '0A':
+            if group[2][:2] == '0A':
+                if group[3][:2] == '0A':
+                    if group[4][:2] == '0A':
+                        if group[5][:2] == '0A':
+                            group = group[6:]
+                        else:
+                            group = group[5:]
+                    else:
+                        group = group[4:]
+                else:
+                    group = group[3:]
+            else:
+                group = group[2:]
+        else:
+            group = group[1:]
+                           
+
+    temp = group[0][:2]
+    if temp == '0A':
+        temp = int(group[1][:2]) - 1
+    for i in range(1, len(group)):
+        
+        upper = group[i][:2]
+        if ((upper == '0A') or
+            (int(temp) + 1) == int(upper) or
+            (int(temp) == 13 and int(upper) == 2)):
+
+            # Checking for the run after King card
+            if upper == '0A':
+                if group[i - 1][:2] == '13':
+                    temp = 2
+                else:
+                    temp = int(temp) + 1
+            else:
+                temp = upper
+        else:
+            flag = False
+            break
+    return flag
+
+
+def phazed_phaze_type(phaze):
+    ''' 
+    A function which takes two lists of cards and checks the correct
+    phase for it
+    '''
+    card_deck = {
+        '2': '02',
+        '3': '03',
+        '4': '04',
+        '5': '05',
+        '6': '06',
+        '7': '07',
+        '8': '08',
+        '9': '09',
+        '0': '10',
+        'J': '11',
+        'Q': '12',
+        'K': '13',
+        'A': '0A'
+    }
+
+    phaze_result = []
+
+    
+    # Forming a valid card
+    for group in phaze:
+        for i in range(len(group)):
+            if group[i][0] in card_deck.keys():
+                group[i] = card_deck[group[i][0]] + group[i][1]
+
+
+        # Counting the number of wildcards        
+        num_wild = 0
+        for card in group:
+            if card[:2] == '0A':
+                num_wild += 1
+
+        # Checking that there are atleast two natural cards 
+        check_nc = len(group) - num_wild
+        if check_nc < 2:
+            return phaze_result
+
+
+    group1 = phaze[0]
+    group2 = phaze[1] if len(phaze) > 1 else []
+
+    val1_list, val2_list = [], []
+    suit1_list, suit2_list = [], []
+    accumulation1, accumulation2 = 0, 0
+
+    # Finding a value, suit and accumulation for group 1
+    for card in group1:
+        if card[:2] != '0A':
+            val1_list.append(card[:2])
+            suit1_list.append(card[-1])
+        accumulation1 += 1 if card[:2] == '0A' else int(card[:2])
+
+    # Finding a value, suit and accumulation for group 2
+    for card in group2:
+        if card[:2] != '0A':
+            val2_list.append(card[:2])
+            suit2_list.append(card[-1])
+        accumulation2 += 1 if card[:2] == '0A' else int(card[:2])
+
+
+    # Phaze 1
+    if (len(group1) == len(group2) == 3):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(1)
+
+    # Phaze 2    
+    if (len(group1) == 7):
+        if (int(len(set(suit1_list))) == 1):
+            phaze_result.append(2)
+
+    # Phaze 3,6
+    if (accumulation1 == accumulation2 == 34):
+        phaze_result.append(3)
+        flag1 = check_color_phase6(group1)
+        flag2 = check_color_phase6(group2)
+        if (int(len(set(flag1))) == 1) and (int(len(set(flag2))) == 1):
+            phaze_result.append(6)
+
+    # Phaze 4
+    if (len(group1) == len(group2) == 4):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(4)
+
+    # Phaze 5
+    if len(group1) == 8:
+        flag = run_of_cards(group1)
+        if flag:
+            phaze_result.append(5)
+
+    # Phaze 7
+    if (len(group1) == len(group2) == 4):
+        run = False
+        color = check_color(group1)
+        if len(set(color)) == 1:
+            run = run_of_cards(group1)
+
+        if (int(len(set(val2_list))) == 1) and run:
+            phaze_result.append(7)
+    return list(set(sorted(phaze_result)))
+    
+    
+  
+ FOR main.py
+ 
+ 
+import itertools
+from collections import defaultdict as dd
+from phase_type import phazed_phaze_type
+
+
+def get_card_info(card):
+    '''
+    This function returns the card information dictionary
+    '''
+    card_deck = {
+        '2': '02',
+        '3': '03',
+        '4': '04',
+        '5': '05',
+        '6': '06',
+        '7': '07',
+        '8': '08',
+        '9': '09',
+        '0': '10',
+        'J': '11',
+        'Q': '12',
+        'K': '13',
+        'A': '0A'
+    }
+    card_info = {
+        'val': card_deck[card[0]],
+        'suit': card[1],
+        'origi': card
+    }
+    return card_info
+
+def get_player_info(player_id, phase, hand):
+    '''
+    This function takes three parameters:
+    player_id: 0 to 3
+    phase: 1 to 7
+    hand: A list of cards
+    and returns the dictionary that contains information about the player
+    '''
+    player_info = {
+        "id": player_id,
+        "phase": phase,
+        "hand": [get_card_info(card) for card in hand],
+    }
+    return player_info
+
+def get_phaze_play(phase, hand, table):
+    '''
+    This function takes three parameters:
+    phase: 1 to 7
+    hand: A list of cards
+    table: Cards on the table
+    and checks if the any of the phase can be played on the table
+    '''
+    phase = phase + 1
+    hand = [get_card_info(card)['origi'] for card in hand]
+
+    # check for phase 1
+    if phase == 1:
+        for sub_group in itertools.combinations(hand, 6):
+            for group2 in itertools.combinations(sub_group, 3):
+                phaze = [list(group2), list(group2)]
+                if 1 in phazed_phaze_type(phaze):
+                    group1 = list(sub_group)
+                    for card in group2:
+                        group1.remove(card)
+                    if 1 in phazed_phaze_type([list(group1), list(group1)]):
+                        return (3, (1, [list(group1), list(group2)]))
+
+    # check for phase 2
+    elif phase == 2:
+        for group in itertools.combinations(hand, 7):
+            if 2 in phazed_phaze_type([list(group)]):
+                return (3, (2, [list(group)]))
+
+    # check for phase 3
+    elif phase == 3:
+        for sub_group in itertools.combinations(hand, 8):
+            for group2 in itertools.combinations(sub_group, 3):
+                phaze = [list(group2), list(group2)]
+                if 3 in phazed_phaze_type(phaze):
+                    group1 = list(sub_group)
+                    for card in list(group2):
+                        group1.remove(card)
+                    if 3 in phazed_phaze_type([list(group1), list(group1)]):
+                        return (3, (3, [list(group1), list(group2)]))
+
+    # check for phase 4
+    elif phase == 4:
+        for sub_group in itertools.combinations(hand, 8):
+            for group2 in itertools.combinations(sub_group, 4):
+                phaze = [list(group2), list(group2)]
+                if 4 in phazed_phaze_type(phaze):
+                    group1 = list(sub_group)
+                    for card in list(group2):
+                        group1.remove(card)
+                    if 4 in phazed_phaze_type([list(group1), list(group1)]):
+                        return (3, (4, [list(group1), list(group2)]))
+
+    # check for phase 5
+    elif phase == 5:
+        for group in itertools.combinations(hand, 9):
+            if 5 in phazed_phaze_type([list(group)]):
+                return (3, (5, [list(group)]))
+            
+
+    # tried to play phase 6 and 7 but it exceeds time limit.(works perfectly)
+    '''       
+    # check for phase 6
+    elif phase == 6:
+        for sub_group in list(itertools.combinations(hand, 8)):
+            for group2 in list(itertools.combinations(sub_group, 3)):
+                if 6 in phazed_phaze_type([list(group2), list(group2)]):
+                    group1 = list(sub_group)
+                    for card in list(group2):
+                        group1.remove(card)
+                    if 6 in phazed_phaze_type([list(group1), list(group1)]):
+                        return (3, (6, [list(group1), list(group2)]))
+
+    # check for phase 7
+    elif phase == 7:
+        main_groups = itertools.combinations(hand, 8)
+        for sub_group in main_groups:
+            for group2 in itertools.combinations(sub_group, 4):
+                phaze = [list(group2), list(group2)]
+                if 7 in phazed_phaze_type(phaze):
+                    group1 = list(sub_group)
+                    for card in list(group2):
+                        group1.remove(card)
+                    if 7 in phazed_phaze_type([list(group1), list(group1)]):
+                        return (3, (7, [tuple(group1), list(group2)])) 
+    '''
+
+def get_discard(player, table):
+    '''
+    The function decides which is the most appropriate card to keep and discard 
+    '''
+
+    discard = []
+    min_vals = []
+    max_vals = []
+    min_suits = []
+    max_suits = []
+
+    phase_played = table[player['id']][0]
+    phase = player['phase'] if phase_played else None
+
+    suit_count = dd(int)
+    val_count = dd(int)
+
+    # get counting of values and suits for cards in hand
+    for card in player['hand']:
+        if not card['val'] == '0A':
+            suit_count[card['suit']] += 1
+        val_count[card['val']] += 1
+
+    # finding the minimum and maximum occurence of the value is in hand
+    for key, value in val_count.items():
+        if value == min(val_count.values()):
+            min_vals.append(key)
+        elif value == max(val_count.values()):
+            max_vals.append(key)
+
+    # finding the minimum and maximum occurence of the suit is in hand
+    for key, value in suit_count.items():
+        if value == max(suit_count.values()):
+            max_suits.append(key)
+        elif value == min(suit_count.values()):
+            min_suits.append(key)
+
+    # discard largest value for phase played
+    if phase is None or phase == 3 or phase == 6:
+        for card in player['hand']:
+            if card['val'] != '0A':
+                discard.append(card['origi'])
+        discard.sort(reverse=True)
+
+    if phase == 1 or phase == 4 or phase == 7:
+        for card in player['hand']:
+            if card['val'] != '0A':
+                # discard least occured(for value) card
+                if card['val'] in min_vals:
+                    discard.append(card['origi'])
+                elif card['val'] not in max_vals:
+                    discard.append(card['origi'])
+        discard.sort(reverse=True)
+
+    elif phase == 2:
+        for card in player['hand']:
+            if card['val'] != '0A':
+                # discard least occured(for suit) card
+                if card['suit'] in min_suits:
+                    discard.append(card['origi'])
+                elif card['suit'] not in max_suits:
+                    discard.append(card['origi'])
+        discard.sort(reverse=True)
+
+    elif phase == 5:
+        for card in player['hand']:
+            if card['val'] != '0A':
+                if val_count[card['val']] >= 1:
+                    discard.append(card['origi'])
+        discard.sort(reverse=True)
+
+    # Checking if any discard card not found, then go with wild card
+    if len(discard) == 0:
+        wild_cards = [
+            card['origi'] for card in player['hand'] if card['val'] == '0A'
+        ]
+        if len(wild_cards) != 0:
+            discard.append(wild_cards[0])
+        else:
+            for card in player['hand']:
+                discard.append(card['origi'])
+            discard.sort(reverse=True)
+
+    return discard
+
+
+def phazed_play(player_id, table, turn_history, phase_status, hand, discard):
+    '''
+    This function takes all the parameters and returns a two-tuple
+    consisting of a play ID and related play content that describes 
+    the single play that player desires to make. 
+    '''
+
+    player = get_player_info(player_id, phase_status[player_id], hand)
+    curr_phase = table[player_id][0]
+
+    prev_play = None if len(turn_history) == 0 else turn_history[-1][-1][-1][0]
+
+    # Picking up a card from discard pile
+    if prev_play is None or prev_play == 5:
+        return (2, discard)
+
+    else:
+        # Checking for a valid play after picking up a card 
+        if (prev_play in [1, 2]) and (curr_phase is None):
+            result = get_phaze_play(phase_status[player_id], hand, table)
+            if result is None:
+                # If valid play not found
+                discard_cards = get_discard(player, table)
+                return (5, discard_cards[0])
+            else:
+                return result
+        else:
+            # Discard a card to discard pile
+            discard_cards = get_discard(player, table)
+            return (5, discard_cards[0])
+
+
+if __name__ == '__main__':
+    # Example call to the function.
+    print(phazed_play(1, [(None, []), (5, [['2C', '3H', '4D', 'AD', '6S', '7C',
+      '8S', '9H', '0S', 'JS']]), (None, []), (None, [])], [(0, [(2, 'JS'),
+      (5, 'JS')]), (1, [(2, 'JS'), (3, (5, [['2C', '3H', '4D', 'AD', '6S',
+      '7C', '8S', '9H']])), (4, ('0S', (1, 0, 8))), (4, ('JS',
+      (1, 0, 9)))])], [0, 5, 0, 0], ['5D'], '7H')) 
