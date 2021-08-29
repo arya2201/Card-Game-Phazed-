@@ -1,0 +1,252 @@
+QUESTION
+
+Write a function called phazed_phase_type that takes the following single argument:
+
+phase
+A combination of card groups in the form of a list of lists of cards, where each card is a 2-character string with the value (drawn from '234567890JQKA') followed by the suit (drawn from 'SHDC'), e.g. [['2C', '2S', '2H'], ['7H', '7C', 'AH']] represents an instance of two sets of three cards of the same value, as it is made up of two groups, each of which is a set of three cards of the same value.
+The function should return a sorted list composed of the following values, indicating the type(s) of the combinations of card groups contained in phase, with an invalid combination indicated by the empty list:
+
+1
+Two sets of three cards of the same value, e.g. [['2C', '2S', '2H'], ['7H', '7C', 'AH']] represents a set of three Twos and three Sevens. Note that each set may include Wilds (as we see in our example, with the Ace of Hearts), but must include at least two "natural" cards (i.e. non-Wild cards), which define the value.
+2
+One set of 7 cards of the same suit, e.g. [['2C', '2C', '4C', 'KC', '9C', 'AH', 'JC']] represents a single set of seven Clubs. Note that the set may include Wilds (as we see in our example, with the Ace of Hearts), but must include at least two "natural" cards (i.e. non-Wild cards), which define the suit.
+3
+Two 34-accumulations, e.g. [['2C', 'KH', 'QS', '7H'], ['3H', '7S', '0D', 'KD', 'AD']], noting that there is no restriction on the suits/colours of cards in either accumulation.
+4
+Two sets of four cards of the same value, e.g. [['4H', '4S', 'AC', '4C'], ['7H', '7C', 'AH', 'AC']] represents a set of four Fours and a set of four Sevens. Note that each set may include Wilds (as we see in our example, with the two Aces of Clubs and Ace of Hearts), but must include at least two "natural" cards (i.e. non-Wild cards), which define the value.
+5
+One run of eight cards, e.g. [['4H', '5S', 'AC', '7C', '8H', 'AH', '0S', 'JC']] represents a single run of eight cards. Note that the set may include Wilds (as we see in our example, with the Ace of Clubs standing in for a Six and the Ace of Hearts standing in for a Nine), but must include at least two "natural" cards (i.e. non-Wild cards). Note also that the sequence of the cards is significant for this group type, and that [['4H', '5S', 'AC', '8H', '7C', 'AH', '0S', 'JC']], e.g., is not a valid instance of this phase type, as the run is not in sequence.
+6
+Two 34-accumulations of the same colour, e.g. [['2C', 'KC', 'QS', '7C'], ['3H', '7H', '0D', 'KD', 'AD']], noting that while each accumulation must be a single colour, the two accumulations do not have to match in colour.
+7
+A run of four cards of the same colour and a set of four cards of the same value, e.g. [['4H', '5D', 'AC', '7H'], ['7H', '7C', 'AH', 'AS']] represents a run of four Red cards and a set of four Sevens. Note that each set may include Wilds (as we see in our example, with the Ace of Clubs standing in for a Red Six, and Ace of Hearts and Ace of Spaces standing in for Sevens), but must include at least two "natural" cards (i.e. non-Wild cards), which define the colour/value. Note also that the sequence of the cards within the run is significant for this group type, and also that the sequence of the two groups is significant, in that the run must come before the set of four.
+Example calls to the function are:
+phazed_phase_type([['2C', '2S', '2H'], ['7H', '7C', 'AH']])
+[1]
+>>> phazed_phase_type([['2C', '2C', '4C', 'KC', '9C', 'AH', 'JC']])
+[2]
+>>> phazed_phase_type([['2C', 'KH', 'QS', '7H'], ['3H', '7S', '0D', 'KD', 'AD']])
+[3]
+>>> phazed_phase_type([['4H', '4S', 'AC', '4C'], ['7H', '7C', 'AH', 'AC']])
+[4]
+>>> phazed_phase_type([['4H', '5S', 'AC', '7C', '8H', 'AH', '0S', 'JC']])
+[5]
+>>> phazed_phase_type([['2C', 'KC', 'QS', '7C'], ['3H', '7H', '0D', 'KD', 'AD']])
+[3, 6]
+>>> phazed_phase_type([['4H', '5D', 'AC', '7H'], ['7H', '7C', 'AH', 'AS']])
+[7]
+>>> phazed_phase_type([['4H', '5D', '7C', 'AC'], ['AC', 'AS', 'AS']])
+[]
+
+
+CODE::::
+
+FOR utils.py
+
+def check_color(group):
+    ''' 
+    Check the color of the group given (Red or black)
+    '''
+    flag = []
+    for card in group:
+        if (card[:2] != '0A') and (card[-1] in ['H', 'D']):
+            flag.append(1)
+        elif (card[:2] != '0A') and (card[-1] in ['C', 'S']):
+            flag.append(0)
+    return flag
+
+
+def run_of_cards(group):
+    '''
+    Checking for run of cards in the group
+    '''
+    
+    # Checking if the A's appear in start of the run
+    flag = True
+    if group[0][:2] == '0A':
+        if group[1][:2] == '0A':
+            if group[2][:2] == '0A':
+                if group[3][:2] == '0A':
+                    if group[4][:2] == '0A':
+                        if group[5][:2] == '0A':
+                            group = group[6:]
+                        else:
+                            group = group[5:]
+                    else:
+                        group = group[4:]
+                else:
+                    group = group[3:]
+            else:
+                group = group[2:]
+        else:
+            group = group[1:]
+                           
+
+    temp = group[0][:2]
+    if temp == '0A':
+        temp = int(group[1][:2]) - 1
+    for i in range(1, len(group)):
+        
+        upper = group[i][:2]
+        if ((upper == '0A') or
+            (int(temp) + 1) == int(upper) or
+            (int(temp) == 13 and int(upper) == 2)):
+
+            # Checking for the run after King card
+            if upper == '0A':
+                if group[i - 1][:2] == '13':
+                    temp = 2
+                else:
+                    temp = int(temp) + 1
+            else:
+                temp = upper
+        else:
+            flag = False
+            break
+    return flag
+
+
+def phazed_phases_type(phaze):
+    ''' 
+    A function which takes two lists of cards and checks the correct
+    phase for it
+    '''
+    card_deck = {
+        '2': '02',
+        '3': '03',
+        '4': '04',
+        '5': '05',
+        '6': '06',
+        '7': '07',
+        '8': '08',
+        '9': '09',
+        '0': '10',
+        'J': '11',
+        'Q': '12',
+        'K': '13',
+        'A': '0A'
+    }
+
+    phaze_result = []
+
+    # Forming a valid card
+    for group in phaze:
+        for i in range(len(group)):
+            if group[i][0] in card_deck.keys():
+                group[i] = card_deck[group[i][0]] + group[i][1]
+
+        # Counting the number of wildcards        
+        num_wild = 0
+        for card in group:
+            if card[:2] == '0A':
+                num_wild += 1
+
+        # Checking that there are atleast two natural cards 
+        check_nc = len(group) - num_wild
+        if check_nc < 2:
+            return phaze_result
+
+
+    group1 = phaze[0]
+    group2 = phaze[1] if len(phaze) > 1 else []
+
+    val1_list, val2_list = [], []
+    suit1_list, suit2_list = [], []
+    accumulation1, accumulation2 = 0, 0
+
+    # Finding a value, suit and accumulation for group 1
+    for card in group1:
+        if card[:2] != '0A':
+            val1_list.append(card[:2])
+            suit1_list.append(card[-1])
+        accumulation1 += 1 if card[:2] == '0A' else int(card[:2])
+
+    # Finding a value, suit and accumulation for group 2
+    for card in group2:
+        if card[:2] != '0A':
+            val2_list.append(card[:2])
+            suit2_list.append(card[-1])
+        accumulation2 += 1 if card[:2] == '0A' else int(card[:2])
+
+
+    # Phaze 1
+    if (len(group1) == len(group2) == 3):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(1)
+
+    # Phaze 2    
+    if (len(group1) == 7):
+        if (int(len(set(suit1_list))) == 1):
+            phaze_result.append(2)
+
+    # Phaze 3,6
+    if (accumulation1 == accumulation2 == 34):
+        phaze_result.append(3)
+        flag1 = check_color(group1)
+        flag2 = check_color(group2)
+        if (int(len(set(flag1))) == 1) and (int(len(set(flag2))) == 1):
+            phaze_result.append(6)
+
+    # Phaze 4
+    if (len(group1) == len(group2) == 4):
+        if (int(len(set(val1_list))) == 1) and (int(len(set(val2_list))) == 1):
+            phaze_result.append(4)
+
+    # Phaze 5
+    if len(group1) == 8:
+        flag = run_of_cards(group1)
+        if flag:
+            phaze_result.append(5)
+
+    # Phaze 7
+    if (len(group1) == len(group2) == 4):
+        run = False
+        color = check_color(group1)
+        if len(set(color)) == 1:
+            run = run_of_cards(group1)
+
+        if (int(len(set(val2_list))) == 1) and run:
+            phaze_result.append(7)
+    return list(set(sorted(phaze_result)))
+    
+   
+FOR main.py
+
+from utils import phazed_phases_type
+
+def phazed_phase_type(phase):
+    '''
+    This function returns the correct phases for the list of
+    cards entered
+    '''
+    # Implement this function
+    
+    return phazed_phases_type(phase)
+
+
+if __name__ == '__main__':
+    # Example calls to the function.
+     
+    print(phazed_phase_type([['2C', '2C', '4C', 'KC', '9C', 'AH', 'JC']]))
+    print(phazed_phase_type([['2C', 'KH', 'QS', '7H'],
+                             ['3H', '7S', '0D', 'KD', 'AD']]))
+    print(phazed_phase_type([['4H', '4S', 'AC', '4C'],
+                             ['7H', '7C', 'AH', 'AC']]))
+    print(phazed_phase_type([['4H', '5S', 'AC', '7C',
+                              '8H', 'AH', '0S', 'JC']]))
+    print(phazed_phase_type([['2C', 'KC', 'QS', '7C'],
+                             ['3H', '7H', '0D', 'KD', 'AD']]))
+    print(phazed_phase_type([['4H', '5D', 'AC', '7H'],
+                             ['7H', '7C', 'AH', 'AS']]))
+    print(phazed_phase_type([['4H', '5D', '7C', 'AC'], ['AC', 'AS', 'AS']]))
+    
+    print(phazed_phase_type([['9D', '9S', 'AD', '9H'], 
+                             ['AD', '8S', '7D', 'AH']]))
+    print(phazed_phase_type([['AD', 'AD', 'AH', 'AH', 'AS', 'AS', 'AC']]))
+    print(phazed_phase_type([['9D', '7D', 'AH', '2D',
+                              '0D', 'AS', 'KD', 'JD']]))
+    print(phazed_phase_type([['9D', '9S', 'AD'], ['AC', 'AS', 'AD']]))
+    print(phazed_phase_type([['9D', '9S', 'AD'], ['6D', 'AS', '6D']]))
+    print(phazed_phase_type([['2C', '2S', '2H'], ['7H', '7C', 'AH']]))
+    
+    
